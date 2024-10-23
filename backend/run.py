@@ -18,6 +18,8 @@ if __name__ == '__main__':
     with app.app_context():
         # Ensure the database is created
         db.create_all()
+        #test xommit
+        
         
         # # Fetch data on startup
         # start_date = os.getenv("START_DATE", date.today().strftime('%Y-%m-%d'))
