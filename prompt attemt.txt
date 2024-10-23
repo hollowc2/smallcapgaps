@@ -1,0 +1,70 @@
+Given the project structure and files above I want to create a python app the accomplishes the following:
+ Use flask and python for the backend  SQlite for the database
+ Use javascript and React for frontend
+First i want to work on the backend. 
+    The function of the backend is to gather data and create a database to store the information. Also the backend will be responsible for organizing and manipulating data into a new tables that will make passing data to the front end quicker.
+    The data source is polygon.io my api key is Zh7Wjl7r7FsVdax5Vyb2CH0TVSPwvuNI
+    The api call I want to use is the Grouped Daily (Bars) here is the response object to expect: 
+Response Object
+{
+  "adjusted": true,
+  "queryCount": 3,
+  "results": [
+    {
+      "T": "KIMpL",
+      "c": 25.9102,
+      "h": 26.25,
+      "l": 25.91,
+      "n": 74,
+      "o": 26.07,
+      "t": 1602705600000,
+      "v": 4369,
+      "vw": 26.0407
+    },
+    {
+      "T": "TANH",
+      "c": 23.4,
+      "h": 24.763,
+      "l": 22.65,
+      "n": 1096,
+      "o": 24.5,
+      "t": 1602705600000,
+      "v": 25933.6,
+      "vw": 23.493
+    },
+    {
+      "T": "VSAT",
+      "c": 34.24,
+      "h": 35.47,
+      "l": 34.21,
+      "n": 4966,
+      "o": 34.9,
+      "t": 1602705600000,
+      "v": 312583,
+      "vw": 34.4736
+    }
+  ],
+  "resultsCount": 3,
+  "status": "OK"
+}
+
+I want to  download data starting on 2024-10-01 but i want to be able to modify that in the future.
+I want the data saved to a sqlite database and it can be named smallcapgaps.db with the table named grouped_daily_bars.
+
+Now I need way to organize and calculate gap data  using the data from group_daily_bars I want to find tickers who gap up >20% with volume above 1,000,000 (gap up is open > previous days close) 
+I want to use this data to populate a new table called gap stats.  I want it indexed and i want the following values for each ticker that meets the above critera: 
+ticker
+date
+gap_percent
+return
+did_close_red
+start_chart
+end_chart
+
+I want to be able to search this table by date or ticker so thats why i want it to be indexed.
+
+take into consideration polygons download limit of 5 api calls per minute
+
+
+
+Before you do anything ask me some clarifying or amplifying questions

@@ -1,0 +1,157 @@
+:root {
+  --primary-bg: #1a2b3c;
+  --secondary-bg: #2c3e50;
+  --text-color: #ecf0f1;
+  --accent-color: #3498db;
+  --success-color: #2ecc71;
+  --error-color: #e74c3c;
+}
+
+body {
+  background-color: var(--primary-bg);
+  color: var(--text-color);
+  font-family: 'Roboto', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.App {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+h1 {
+  text-align: center;
+  font-size: 2.5rem;
+  margin-bottom: 30px;
+  color: var(--accent-color);
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 30px;
+  background-color: var(--secondary-bg);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.form-group input {
+  padding: 10px;
+  border: 1px solid var(--accent-color);
+  border-radius: 4px;
+  background-color: var(--primary-bg);
+  color: var(--text-color);
+}
+
+.search-form button {
+  align-self: end;
+  padding: 10px 20px;
+  background-color: var(--accent-color);
+  color: var(--text-color);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.search-form button:hover {
+  background-color: #2980b9;
+}
+
+.gap-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.gap-item {
+  padding: 15px;
+  margin-bottom: 10px;
+  background-color: var(--secondary-bg);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.gap-item:hover {
+  background-color: #34495e;
+}
+
+.gap-content {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.gap-ticker, .gap-date, .gap-percent, .gap-return, .gap-close {
+  margin-right: 10px;
+}
+
+.gap-percent.positive, .gap-return.positive {
+  color: var(--success-color);
+}
+
+.gap-percent.negative, .gap-return.negative {
+  color: var(--error-color);
+}
+
+.gap-close.red {
+  color: var(--error-color);
+}
+
+.gap-close.green {
+  color: var(--success-color);
+}
+
+/* Styles for the charts */
+.chart-container {
+  padding: 15px;
+  background-color: #1a2b3c;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.charts-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px; /* Adds space between charts */
+}
+
+.chart-wrapper {
+  flex: 1 1 45%; /* Each chart takes up approximately half the container */
+  min-width: 300px; /* Ensures charts don't get too small on narrow screens */
+}
+
+.error {
+  color: var(--error-color);
+  background-color: rgba(231, 76, 60, 0.1);
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+/* Highlight expanded gaps */
+.gap-item.expanded {
+  background-color: #34495e;
+}
+
+/* Loading indicator inside chart container */
+.chart-container p {
+  color: var(--accent-color);
+  text-align: center;
+  font-weight: bold;
+}
