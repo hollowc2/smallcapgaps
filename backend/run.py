@@ -11,16 +11,13 @@ app = create_app()
 def scheduled_fetch():
     with app.app_context():
         start_date = date.today().strftime('%Y-%m-%d')
-        # fetch_data(start_date)
+        # fetch_data(start_date
         # process_gap_data is already called within fetch_data after data insertion
 
 if __name__ == '__main__':
     with app.app_context():
         # Ensure the database is created
         db.create_all()
-        #test xommit
-        
-        
         # # Fetch data on startup
         # start_date = os.getenv("START_DATE", date.today().strftime('%Y-%m-%d'))
         # fetch_data(start_date)
