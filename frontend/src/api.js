@@ -36,3 +36,13 @@ export async function fetchGapData(searchParams) {
   }
   return response.json();
 }
+
+export async function fetchTickerStats(ticker) {
+  const response = await fetch(`${API_BASE_URL}/ticker_stats?ticker=${ticker}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch ticker stats');
+  }
+  const data = await response.json();
+  console.log('Fetched ticker stats:', data);
+  return data[0] || {}; // Return the first item in the array or an empty object
+}

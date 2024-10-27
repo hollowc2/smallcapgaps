@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SearchForm from './components/SearchForm';
 import GapList from './components/GapList';
 import Chart from './components/Chart';
 import IntradayChart from './components/IntradayChart';
 import './App.css';
-import { fetchGapData, fetchDailyData, fetchIntradayData } from './api';
+import { fetchGapData, fetchDailyData, fetchIntradayData, fetchTickerStats } from './api';
 import { v4 as uuidv4 } from 'uuid'; // Ensure uuid is installed: npm install uuid
 import { DateTime } from 'luxon';
 
@@ -13,6 +13,7 @@ function App() {
   const [expandedGaps, setExpandedGaps] = useState({}); // { [gapId]: gapObject }
   const [loading, setLoading] = useState(false); // State for loading
   const [error, setError] = useState(null); // State for errors
+  const [tickerStats, setTickerStats] = useState({});
 
   const handleSearch = async (searchParams) => {
     console.log('Searching with params:', searchParams);
@@ -37,6 +38,28 @@ function App() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      const uniqueTickers = [...new Set(gapData.map(gap => gap.ticker))];
+      const stats = {};
+      for (const ticker of uniqueTickers) {
+        try {
+          const tickerStat = await fetchTickerStats(ticker);
+          stats[ticker] = tickerStat; // This should now be an object, not an array
+          console.log(`Fetched stats for ${ticker}:`, tickerStat);
+        } catch (error) {
+          console.error(`Failed to fetch stats for ${ticker}:`, error);
+        }
+      }
+      setTickerStats(stats);
+      console.log('All ticker stats:', stats);
+    };
+
+    if (gapData.length > 0) {
+      fetchStats();
+    }
+  }, [gapData]);
 
   const handleGapSelect = async (gap) => {
     console.log('Gap clicked:', gap);
@@ -103,6 +126,7 @@ function App() {
         gaps={gapData} 
         onSelectGap={handleGapSelect} 
         expandedGaps={expandedGaps} 
+        ticker_stats={tickerStats}
       />
     </div>
   );

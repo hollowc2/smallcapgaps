@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.models import GapData, IntradayDataConcrete, DailyDataConcrete
+from app.models import GapData, IntradayDataConcrete, DailyDataConcrete, TickerStats
 from app import db
 from datetime import datetime
 from sqlalchemy import func
@@ -104,3 +104,19 @@ def get_intraday_data():
         })
 
     return jsonify(results), 200
+
+@api_bp.route('/ticker_stats', methods=['GET'])
+def get_ticker_stats():
+    ticker = request.args.get('ticker')
+    
+    if ticker:
+        ticker_stat = TickerStats.query.get(ticker.upper())
+        if ticker_stat:
+            return jsonify([ticker_stat.to_dict()]), 200
+        else:
+            return jsonify([]), 200  # Return an empty array if no stats found
+    else:
+        # If no ticker is provided, return stats for all tickers
+        all_stats = TickerStats.query.all()
+        results = [stat.to_dict() for stat in all_stats]
+        return jsonify(results), 200

@@ -92,13 +92,29 @@ form {
 }
 
 .gap-content {
-  display: flex;
-  justify-content: space-between;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 20% 20% 20% 20% 20%;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+}
+
+.gap-ticker, .gap-date, .gap-percent, .gap-return, .gap-close {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .gap-ticker, .gap-date, .gap-percent, .gap-return, .gap-close {
   margin-right: 10px;
+}
+
+.gap-percent::before {
+  content: "Gap: ";
+}
+
+.gap-return::before {
+  content: "Return: ";
 }
 
 .gap-percent.positive, .gap-return.positive {

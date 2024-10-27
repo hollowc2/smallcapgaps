@@ -90,3 +90,23 @@ class DailyDataConcrete(DailyData):
 
     def __repr__(self):
         return f'<DailyDataConcrete {self.ticker} on {self.date}>'
+
+class TickerStats(db.Model):
+    __tablename__ = 'ticker_stats'
+    
+    ticker = db.Column(db.String(10), primary_key=True)
+    total_gaps = db.Column(db.Integer, nullable=False, default=0)
+    red_close_count = db.Column(db.Integer, nullable=False, default=0)
+
+    @property
+    def chance_to_close_red(self):
+        if self.total_gaps == 0:
+            return 0
+        return (self.red_close_count / self.total_gaps) * 100
+
+    def to_dict(self):
+        return {
+            'ticker': self.ticker,
+            'total_gaps': self.total_gaps,
+            'chance_to_close_red': self.chance_to_close_red
+        }

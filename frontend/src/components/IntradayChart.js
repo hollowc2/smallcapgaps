@@ -49,14 +49,23 @@ function IntradayChart({ gap, data }) {
         vertLines: { color: '#f0f0f0' },
         horzLines: { color: '#f0f0f0' },
       },
+      crosshair: {
+        mode: 1, // This sets the crosshair to "normal" mode
+      },
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
         tickMarkFormatter: (time) => {
-          const date = new Date(time * 1000);
-          return DateTime.fromJSDate(date)
+          return DateTime.fromSeconds(time)
             .setZone('America/Los_Angeles')
             .toFormat('HH:mm');
+        },
+      },
+      localization: {
+        timeFormatter: (time) => {
+          return DateTime.fromSeconds(time)
+            .setZone('America/Los_Angeles')
+            .toFormat('yyyy-MM-dd HH:mm:ss');
         },
       },
     });

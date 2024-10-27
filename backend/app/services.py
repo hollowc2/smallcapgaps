@@ -3,7 +3,7 @@ import time
 import logging
 from datetime import datetime, timedelta, date
 from app import db, create_app  # Ensure this imports the correct db instance
-from app.models import GroupedDailyBars, GapData, DailyDataConcrete
+from app.models import GroupedDailyBars, GapData, DailyDataConcrete, TickerStats
 from sqlalchemy.exc import SQLAlchemyError
 import os
 from dotenv import load_dotenv
@@ -15,6 +15,7 @@ import json
 from app.rate_limiter import make_api_request
 from collections import deque
 from sqlalchemy.orm import joinedload
+from sqlalchemy import case
 
 load_dotenv()
 
@@ -180,12 +181,17 @@ def fetch_data(start_date=None):
             try:
                 db.session.commit()
                 logger.info(f"Data for {current_date} committed to the database.")
+
+                # Process gap data for the current date
+                process_gap_data(current_date, current_date)
+
+                # Commit changes again after processing gap data
+                db.session.commit()
+                logger.info(f"Gap data for {current_date} committed to the database.")
+
             except SQLAlchemyError as e:
                 db.session.rollback()
                 logger.error(f"Database commit failed for {current_date}: {e}")
-
-            # Process gap data for the current date
-            process_gap_data(current_date, current_date)
 
             # Adjust the sleep time at the end of each iteration
       
@@ -209,12 +215,12 @@ def process_gap_data(start_date, end_date=None):
             logger.info(f"Processing gap data for {current_date}")
 
             try:
-                # Fetch data for the previous day
-                previous_date = current_date - timedelta(days=1)
+                # Fetch data for the previous trading day
+                previous_date = get_previous_trading_day(current_date)
                 previous_bars = GroupedDailyBars.query.filter(
                     func.date(GroupedDailyBars.timestamp) == previous_date
                 ).all()
-                logger.info(f"Found {len(previous_bars)} bars for previous date {previous_date}")
+                logger.info(f"Found {len(previous_bars)} bars for previous trading date {previous_date}")
                 previous_close_dict = {bar.symbol: bar.close for bar in previous_bars}
 
                 # Fetch data for the current day
@@ -286,6 +292,9 @@ def process_gap_data(start_date, end_date=None):
                 db.session.commit()
                 logger.info(f"Committed gap data changes for {current_date} to the database.")
 
+                # After processing all gap data
+                update_ticker_stats()
+                logger.info("Ticker stats updated successfully.")
             except Exception as e:
                 db.session.rollback()
                 logger.error(f"Error processing gap data for {current_date}: {e}")
@@ -377,3 +386,36 @@ def retry_delayed_symbols():
         symbol, start_date, end_date = delayed_symbols.popleft()
         logger.info(f"Retrying fetch for delayed symbol: {symbol}")
         fetch_daily_data(symbol, start_date, end_date)
+
+def get_previous_trading_day(current_date):
+    previous_date = current_date - timedelta(days=1)
+    while previous_date.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
+        previous_date -= timedelta(days=1)
+    return previous_date
+
+def update_ticker_stats():
+    try:
+        # Get all tickers and their gap counts
+        gap_counts = db.session.query(GapData.ticker, 
+                                      func.count(GapData.id).label('total_gaps'),
+                                      func.sum(case((GapData.did_close_red == True, 1), else_=0)).label('red_close_count')
+                                     ).group_by(GapData.ticker).all()
+
+        for ticker, total_gaps, red_close_count in gap_counts:
+            ticker_stat = TickerStats.query.get(ticker)
+            if ticker_stat:
+                ticker_stat.total_gaps = total_gaps
+                ticker_stat.red_close_count = red_close_count
+            else:
+                new_ticker_stat = TickerStats(ticker=ticker, 
+                                              total_gaps=total_gaps, 
+                                              red_close_count=red_close_count)
+                db.session.add(new_ticker_stat)
+
+        db.session.commit()
+        logger.info("Ticker stats updated successfully.")
+    except Exception as e:
+        logger.error(f"Error updating ticker stats: {e}")
+        db.session.rollback()
+    finally:
+        db.session.close()
