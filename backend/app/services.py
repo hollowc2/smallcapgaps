@@ -16,6 +16,9 @@ from app.rate_limiter import make_api_request
 from collections import deque
 from sqlalchemy.orm import joinedload
 from sqlalchemy import case
+from pandas.tseries.holiday import USFederalHolidayCalendar
+from pandas.tseries.offsets import CustomBusinessDay
+import pandas as pd
 
 load_dotenv()
 
@@ -73,6 +76,12 @@ def fetch_data(start_date=None):
         current_date = fetch_start_date
 
         while current_date <= today:
+            # Add trading day check here
+            if not is_trading_day(current_date):
+                logger.info(f"Skipping {current_date} - not a trading day")
+                current_date += timedelta(days=1)
+                continue
+
             logger.info(f"Processing date: {current_date}")
 
             if data_exists_for_date(current_date):
@@ -197,6 +206,14 @@ def fetch_data(start_date=None):
       
             current_date += timedelta(days=1)
 
+def is_trading_day(date):
+    """Check if the given date is a trading day (weekday and not a holiday)"""
+    calendar = USFederalHolidayCalendar()
+    holidays = calendar.holidays(start=date, end=date)
+    
+    # Check if it's a weekday (0 = Monday, 4 = Friday) and not a holiday
+    return date.weekday() < 5 and date not in holidays
+
 def process_gap_data(start_date, end_date=None):
     app = current_app._get_current_object()
     with app.app_context():
@@ -212,6 +229,12 @@ def process_gap_data(start_date, end_date=None):
 
         current_date = start_date
         while current_date <= end_date:
+            # Add trading day check
+            if not is_trading_day(current_date):
+                logger.info(f"Skipping {current_date} - not a trading day")
+                current_date += timedelta(days=1)
+                continue
+
             logger.info(f"Processing gap data for {current_date}")
 
             try:
@@ -220,14 +243,12 @@ def process_gap_data(start_date, end_date=None):
                 previous_bars = GroupedDailyBars.query.filter(
                     func.date(GroupedDailyBars.timestamp) == previous_date
                 ).all()
-                logger.info(f"Found {len(previous_bars)} bars for previous trading date {previous_date}")
                 previous_close_dict = {bar.symbol: bar.close for bar in previous_bars}
 
                 # Fetch data for the current day
                 current_bars = GroupedDailyBars.query.filter(
                     func.date(GroupedDailyBars.timestamp) == current_date
                 ).all()
-                logger.info(f"Found {len(current_bars)} bars for current date {current_date}")
 
                 for bar in current_bars:
                     previous_close = previous_close_dict.get(bar.symbol)
@@ -240,51 +261,45 @@ def process_gap_data(start_date, end_date=None):
 
                     # Only process if gap_percent > 20 and volume > 1,000,000
                     if gap_percent > 20 and bar.volume > 1_000_000:
+                        # Check if gap data already exists BEFORE making API calls
+                        existing_gap_data = GapData.query.filter_by(
+                            ticker=bar.symbol,
+                            date=current_date
+                        ).first()
+
+                        if existing_gap_data:
+                            logger.info(f"Gap data already exists for {bar.symbol} on {current_date}. Skipping.")
+                            continue
+
                         logger.info(f"Found potential gap for {bar.symbol} on {current_date}: {gap_percent:.2f}% gap, {bar.volume} volume")
 
                         # Calculate return
                         return_value = ((bar.close - bar.open) / bar.open) * 100
                         did_close_red = bar.close < bar.open
 
-                        # Fetch intraday data
+                        # Only fetch API data for new records
                         intraday_data = fetch_intraday_data(bar.symbol, current_date)
                         
-                        # Fetch daily data for a 60-day range around the current date
                         start_chart_date = current_date - timedelta(days=30)
                         end_chart_date = current_date + timedelta(days=30)
                         daily_data = fetch_daily_data(bar.symbol, start_chart_date, end_chart_date)
 
                         # Only proceed if both intraday and daily data are available
                         if intraday_data is not None and daily_data is not None:
-                            # Check if gap data already exists for this specific symbol and date
-                            existing_gap_data = GapData.query.filter_by(
+                            # Add new gap data
+                            new_gap_data = GapData(
                                 ticker=bar.symbol,
-                                date=current_date
-                            ).first()
-
-                            if existing_gap_data:
-                                # Update existing data
-                                existing_gap_data.gap_percent = gap_percent
-                                existing_gap_data.return_value = return_value
-                                existing_gap_data.did_close_red = did_close_red
-                                existing_gap_data.intraday_data = intraday_data
-                                existing_gap_data.daily_data = daily_data
-                                logger.info(f"Updated gap data for {bar.symbol} on {current_date}")
-                            else:
-                                # Add new gap data
-                                new_gap_data = GapData(
-                                    ticker=bar.symbol,
-                                    date=current_date,
-                                    gap_percent=gap_percent,
-                                    return_value=return_value,
-                                    did_close_red=did_close_red,
-                                    start_chart_date=start_chart_date,
-                                    end_chart_date=end_chart_date,
-                                    intraday_data=intraday_data,
-                                    daily_data=daily_data
-                                )
-                                db.session.add(new_gap_data)
-                                logger.info(f"Added new gap data for {bar.symbol} on {current_date}")
+                                date=current_date,
+                                gap_percent=gap_percent,
+                                return_value=return_value,
+                                did_close_red=did_close_red,
+                                start_chart_date=start_chart_date,
+                                end_chart_date=end_chart_date,
+                                intraday_data=intraday_data,
+                                daily_data=daily_data
+                            )
+                            db.session.add(new_gap_data)
+                            logger.info(f"Added new gap data for {bar.symbol} on {current_date}")
                         else:
                             logger.warning(f"Skipping gap data for {bar.symbol} on {current_date} due to missing data")
 
@@ -387,11 +402,15 @@ def retry_delayed_symbols():
         logger.info(f"Retrying fetch for delayed symbol: {symbol}")
         fetch_daily_data(symbol, start_date, end_date)
 
-def get_previous_trading_day(current_date):
-    previous_date = current_date - timedelta(days=1)
-    while previous_date.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
-        previous_date -= timedelta(days=1)
-    return previous_date
+def get_previous_trading_day(date):
+    """Get the previous trading day, skipping weekends and holidays"""
+    calendar = USFederalHolidayCalendar()
+    business_day = CustomBusinessDay(calendar=calendar)
+    
+    # Subtract one business day
+    previous_day = pd.Timestamp(date) - business_day
+    
+    return previous_day.date()
 
 def update_ticker_stats():
     try:
